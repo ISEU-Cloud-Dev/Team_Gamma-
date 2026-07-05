@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import DateTime, ForeignKey, Table, Column, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -14,8 +14,8 @@ from app.db.database import Base
 response_options = Table(
     "response_options",
     Base.metadata,
-    Column("response_id", UUID(as_uuid=True), ForeignKey("responses.id", ondelete="CASCADE"), primary_key=True),
-    Column("option_id", UUID(as_uuid=True), ForeignKey("options.id", ondelete="CASCADE"), primary_key=True),
+    Column("response_id", Uuid, ForeignKey("responses.id", ondelete="CASCADE"), primary_key=True),
+    Column("option_id", Uuid, ForeignKey("options.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
@@ -34,10 +34,10 @@ class Response(Base):
     __tablename__ = "responses"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid, primary_key=True, default=uuid.uuid4
     )
     survey_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False
     )
     text_answers: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -2,7 +2,7 @@ import uuid
 from typing import List
 
 from sqlalchemy import String, ForeignKey, Integer, Enum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
@@ -10,9 +10,9 @@ from app.db.database import Base
 
 
 class QuestionType(str, enum.Enum):
-    SINGLE_CHOICE = "single_choice"   # radio button, una sola opción
+    SINGLE_CHOICE = "single_choice"      # radio button, una sola opción
     MULTIPLE_CHOICE = "multiple_choice"  # checkboxes, varias opciones
-    TEXT = "text"                     # respuesta libre, sin opciones
+    TEXT = "text"                        # respuesta libre, sin opciones
 
 
 class Question(Base):
@@ -26,14 +26,19 @@ class Question(Base):
     __tablename__ = "questions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid, primary_key=True, default=uuid.uuid4
     )
     survey_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False
     )
     text: Mapped[str] = mapped_column(String(500), nullable=False)
     type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), default=QuestionType.SINGLE_CHOICE
+        Enum(
+            QuestionType,
+            name="question_type",
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+        ),
+        default=QuestionType.SINGLE_CHOICE,
     )
     order: Mapped[int] = mapped_column(Integer, default=0)  # orden de aparición
 
