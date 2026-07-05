@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
 from app.models.survey import Survey
 from app.models.question import Question
 from app.models.option import Option
-from app.schemas.survey import SurveyCreate, SurveyRead
+from app.schemas.survey import SurveyCreate, SurveyRead, SurveyListResponse
 
 router = APIRouter(prefix="/api/v1/surveys", tags=["surveys"])
 
@@ -48,3 +50,36 @@ async def create_survey(payload: SurveyCreate, db: AsyncSession = Depends(get_db
         await db.refresh(question, attribute_names=["options"])
 
     return survey
+
+
+@router.get("", response_model=SurveyListResponse)
+async def list_surveys(
+    page: int = Query(1, ge=1, description="Número de página, empieza en 1"),
+    size: int = Query(10, ge=1, le=100, description="Encuestas por página"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lista las encuestas de forma paginada, con sus preguntas y opciones
+    ya incluidas.
+
+    Usamos selectinload para traer preguntas y opciones en 2 consultas
+    extra (una por cada nivel de relación), en vez de 1 consulta por
+    cada encuesta -- eso es lo que evita el problema N+1.
+    """
+    offset = (page - 1) * size
+
+    total = (await db.execute(select(func.count()).select_from(Survey))).scalar_one()
+
+    stmt = (
+        select(Survey)
+        .options(
+            selectinload(Survey.questions).selectinload(Question.options)
+        )
+        .order_by(Survey.created_at.desc())
+        .offset(offset)
+        .limit(size)
+    )
+    result = await db.execute(stmt)
+    surveys = result.scalars().all()
+
+    return SurveyListResponse(items=surveys, total=total, page=page, size=size)
