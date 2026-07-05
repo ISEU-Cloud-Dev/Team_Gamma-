@@ -1,15 +1,20 @@
-FROM python:3.11-alpine
+FROM python:3.12-slim
 
-WORKDIR /code
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Instalar dependencias del sistema necesarias para compilar ciertas librerías (como psycopg2 si es necesario)
-RUN apk add --no-cache gcc musl-dev postgresql-dev libffi-dev
+WORKDIR /app
 
-COPY ./requirements.txt /code/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./app /code/app
+COPY . .
 
-# Comando para ejecutar uvicorn apuntando a main dentro de app
+EXPOSE 8000
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
