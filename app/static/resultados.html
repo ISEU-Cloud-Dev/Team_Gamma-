@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Resultados en tiempo real</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 1.4rem; }
+  #estado { font-size: 0.85rem; margin-bottom: 20px; }
+  #estado.ok { color: #16a34a; }
+  #estado.error { color: #dc2626; }
+  #estado.conectando { color: #ca8a04; }
+  .question { margin-bottom: 24px; }
+  .question h3 { margin-bottom: 8px; }
+  .option-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 0.9rem; }
+  .option-label { width: 110px; flex-shrink: 0; }
+  .bar-track { flex: 1; background: #f1f5f9; border-radius: 4px; height: 20px; overflow: hidden; }
+  .bar-fill { background: #2563eb; height: 100%; width: 0%; transition: width 0.4s ease; }
+  .votes { width: 40px; text-align: right; }
+  #total { margin-top: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>Resultados en vivo — Encuesta #<span id="surveyIdLabel"></span></h1>
+  <p id="estado" class="conectando">Conectando…</p>
+  <div id="preguntas"></div>
+  <p id="total"></p>
+
+<script>
+const surveyId = 1; // TODO: leer de la URL, ej. ?survey_id=1
+document.getElementById("surveyIdLabel").textContent = surveyId;
+
+const estadoEl = document.getElementById("estado");
+const preguntasEl = document.getElementById("preguntas");
+const totalEl = document.getElementById("total");
+
+function conectar() {
+  const ws = new WebSocket(`ws://localhost:8000/ws/surveys/${surveyId}`);
+
+  ws.onopen = () => {
+    estadoEl.textContent = "Conectando…";
+    estadoEl.className = "conectando";
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.event === "connected") {
+      estadoEl.textContent = "Conectado, esperando resultados…";
+      estadoEl.className = "ok";
+    } else if (data.event === "results_updated") {
+      estadoEl.textContent = "Recibiendo resultados en vivo";
+      estadoEl.className = "ok";
+      renderResultados(data.results);
+    } else if (data.event === "error") {
+      estadoEl.textContent = `Error: ${data.message}`;
+      estadoEl.className = "error";
+    }
+  };
+
+  ws.onclose = () => {
+    estadoEl.textContent = "Conexión perdida, reintentando en 3s…";
+    estadoEl.className = "error";
+    setTimeout(conectar, 3000);
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+function renderResultados(results) {
+  if (!results || !results.questions) return;
+  preguntasEl.innerHTML = "";
+
+  results.questions.forEach(q => {
+    const totalVotosPregunta = q.options.reduce((acc, o) => acc + o.votes, 0);
+
+    const qDiv = document.createElement("div");
+    qDiv.className = "question";
+    const h3 = document.createElement("h3");
+    h3.textContent = q.text;
+    qDiv.appendChild(h3);
+
+    q.options.forEach(opt => {
+      const pct = totalVotosPregunta > 0 ? (opt.votes / totalVotosPregunta) * 100 : 0;
+      const row = document.createElement("div");
+      row.className = "option-row";
+      row.innerHTML = `
+        <span class="option-label">${opt.text}</span>
+        <div class="bar-track"><div class="bar-fill" style="width: ${pct}%"></div></div>
+        <span class="votes">${opt.votes}</span>
+      `;
+      qDiv.appendChild(row);
+    });
+
+    preguntasEl.appendChild(qDiv);
+  });
+
+  totalEl.textContent = `Total de respuestas: ${results.total_responses ?? "—"}`;
+}
+
+conectar();
+</script>
+</body>
+</html>
