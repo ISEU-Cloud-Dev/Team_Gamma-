@@ -37,3 +37,6 @@ async def health_check():
 async def startup_event():
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
     asyncio.create_task(redis_listener(redis_url))
+
+
+    
