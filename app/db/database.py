@@ -23,7 +23,7 @@ if not _raw_url:
     )
 
 if _raw_url.startswith("postgresql://"):
-    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
 else:
     DATABASE_URL = _raw_url
 
