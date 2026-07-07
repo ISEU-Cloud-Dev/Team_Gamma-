@@ -1,8 +1,6 @@
 import asyncio
 import os
-
 from fastapi import FastAPI
-
 from app.api.surveys import router as surveys_router
 from app.websocket.routes import router as websocket_router
 from app.websocket.redis_listener import redis_listener
