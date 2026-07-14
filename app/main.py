@@ -1,6 +1,7 @@
 import asyncio
 import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.api.surveys import router as surveys_router
 from app.websocket.routes import router as websocket_router
 from app.websocket.redis_listener import redis_listener
@@ -11,20 +12,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Rutas de encuestas
 app.include_router(surveys_router)
-
-# Rutas de WebSocket
 app.include_router(websocket_router)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Guardamos referencia a tareas de fondo para que el garbage collector
+# no las destruya mientras siguen corriendo (bug conocido de asyncio)
+_background_tasks = set()
 
 
 @app.get("/")
 async def root():
     """Endpoint de verificación: confirma que la API está corriendo."""
-    return {
-        "status": "ok",
-        "message": "Bienvenido a Real-Time Polls API"
-    }
+    return {"status": "ok", "message": "Bienvenido a Real-Time Polls API"}
 
 
 @app.get("/health")
@@ -36,7 +36,6 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
-    asyncio.create_task(redis_listener(redis_url))
-
-
-    
+    task = asyncio.create_task(redis_listener(redis_url))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
