@@ -24,7 +24,10 @@ config = context.config
 # si la URL trae "+asyncpg" se lo quitamos para que use psycopg2 (default).
 db_url = os.getenv("DATABASE_URL")
 if db_url:
-    db_url = db_url.replace("+asyncpg", "")
+    if db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
     config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
