@@ -98,6 +98,27 @@ async def list_surveys(
     return SurveyListResponse(items=surveys, total=total, page=page, size=size)
 
 
+@router.get("/{survey_id}", response_model=SurveyRead)
+async def get_survey(survey_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Devuelve el detalle completo de UNA encuesta, con sus preguntas y
+    opciones anidadas -- el frontend necesita los IDs de cada pregunta
+    y opción para poder enviar respuestas después.
+    """
+    stmt = (
+        select(Survey)
+        .options(selectinload(Survey.questions).selectinload(Question.options))
+        .where(Survey.id == survey_id)
+    )
+    survey = (await db.execute(stmt)).scalar_one_or_none()
+    if survey is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No existe una encuesta con id {survey_id}",
+        )
+    return survey
+
+
 @router.post(
     "/{survey_id}/responses",
     response_model=ResponseRead,
