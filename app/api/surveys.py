@@ -63,6 +63,11 @@ async def list_surveys(
 
 @router.get("/{survey_id}", response_model=SurveyRead)
 async def get_survey(survey_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Devuelve el detalle completo de UNA encuesta, con sus preguntas y
+    opciones anidadas -- el frontend necesita los IDs de cada pregunta
+    y opción para poder enviar respuestas después.
+    """
     stmt = (
         select(Survey)
         .options(selectinload(Survey.questions).selectinload(Question.options))
